@@ -1,6 +1,7 @@
 package com.snakes.model;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Properties;
 import java.lang.NullPointerException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -169,7 +170,7 @@ public class Movie extends Media {
         logger.warn("Initializing Database");
         // Create table
         logger.info("Creating table");
-        String createTable = "CREATE TABLE Movies (Name char(50), IMDB integer, Snakes boolean);";
+        String createTable = "CREATE TABLE Movies (Name char(50), IMDB INTEGER, Snakes ENUM('true', 'false'));";
         Statement createStmt = con.createStatement();
         createStmt.execute(createTable);
       }
@@ -232,18 +233,20 @@ public class Movie extends Media {
       */
       File databaseConfig = new File("/tmp/database.json");
       JsonParser parser = factory.createParser(databaseConfig);
-      // Load the Postgresql driver class
-      Class.forName("org.postgresql.Driver");
+      // Load the MySQL driver class
+      Class.forName("com.mysql.jdbc.Driver");
       /* Read the first value in the JSON document with Jackson. This must be a full JDBC
-      *  connection string a la jdbc:postgresql://hostname:port/dbName?user=userName&password=password
+      *  connection string a la jdbc:mysql://hostname:port/dbName?user=userName&password=password
       */
       JsonToken jsonToken = null;
       while ( jsonToken != JsonToken.VALUE_STRING ) 
         jsonToken = parser.nextToken();
       String jdbcUrl = parser.getValueAsString();
+      Properties properties = new Properties();
+      properties.setProperty("useSSL","true");
       // Connect to the database
       logger.trace("Getting remote connection with url from database config file.");
-      Connection con = DriverManager.getConnection(jdbcUrl);
+      Connection con = DriverManager.getConnection(jdbcUrl, properties);
       logger.info("Remote connection successful.");
       return con;
     }
@@ -254,15 +257,17 @@ public class Movie extends Media {
     // Read database info from environment variables (standard configration)
     if (System.getProperty("RDS_HOSTNAME") != null) {
       try {
-      Class.forName("org.postgresql.Driver");
+      Class.forName("com.mysql.jdbc.Driver");
       String dbName = System.getProperty("RDS_DB_NAME");
       String userName = System.getProperty("RDS_USERNAME");
       String password = System.getProperty("RDS_PASSWORD");
       String hostname = System.getProperty("RDS_HOSTNAME");
       String port = System.getProperty("RDS_PORT");
-      String jdbcUrl = "jdbc:postgresql://" + hostname + ":" + port + "/" + dbName + "?user=" + userName + "&password=" + password;
+      String jdbcUrl = "jdbc:mysql://" + hostname + ":" + port + "/" + dbName + "?user=" + userName + "&password=" + password;
+      Properties properties = new Properties();
+      properties.setProperty("useSSL","true");
       logger.trace("Getting remote connection with connection string from environment variables.");
-      Connection con = DriverManager.getConnection(jdbcUrl);
+      Connection con = DriverManager.getConnection(jdbcUrl, properties);
       logger.info("Remote connection successful.");
       return con;
     }
@@ -275,10 +280,10 @@ public class Movie extends Media {
   // Connect to a local database for development purposes
   private static Connection getLocalConnection() {
     try {
-      Class.forName("org.postgresql.Driver");
+      Class.forName("com.mysql.jdbc.Driver");
       logger.info("Getting local connection");
       Connection con = DriverManager.getConnection(
-            "jdbc:postgresql://localhost/snakes",
+            "jdbc:mysql://localhost/snakes",
             "snakes",
             "sqlpassword");
       logger.info("Local connection successful.");
